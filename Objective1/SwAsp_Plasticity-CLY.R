@@ -206,8 +206,8 @@ summary(mod)
 #mod1 <- lmer(Height ~ (1 | LocBlock) + (1 | Location:Clone) + (1 | Location:Year), data = AllData, na.action = na.omit)
 #mod2 <- lmer(Height ~ (1 | LocCloneYear), data = AllData, na.action = na.omit)
 
-modsub <- lmer(Height ~ (1 | Clone) + (1 | Location) + (1 | Year) + (1 | LocBlock) + (1 | LocCloneYear) + (1 | LocYear), data = SubSetData, na.action = na.omit)
-summary(modsub) 
+#modsub <- lmer(Height ~ (1 | Clone) + (1 | Location) + (1 | Year) + (1 | LocBlock) + (1 | LocCloneYear) + (1 | LocYear), data = SubSetData, na.action = na.omit)
+#summary(modsub) 
 
 
 sink(paste("~/UPSC_ThesisWork/Data/Plasticity/ModelFit.txt",sep=""))
