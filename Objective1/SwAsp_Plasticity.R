@@ -278,7 +278,7 @@ plot(locCloneYear$Year[which(locCloneYear$Loc == "Ekebo")], locCloneYear[,"trans
      xlab =  "Year (Sävar)", ylab = "Clone/Location/Year BLUP")
 dev.off()
 
-pdf(paste(outDir, "All_PlasticityIndividuals.pdf",sep=""),width = 10, height = 8)
+pdf(paste(outDir, "All_PlasticityIndividuals.pdf",sep=""),width = 10, height = 6)
 ggplot(locCloneYear, aes(x = Year, y = rawVal, group = Clone, color = genoEst)) + 
   geom_line(color = 'black', alpha = 0.5) +
   geom_line(data = subset(locCloneYear, Clone %in% plasticity$Clone[1:10]), linewidth = 1.5) +
@@ -424,11 +424,11 @@ for (loc in c("Saevar","Ekebo")) {
 }
 
   #df[,c("Location","Clone","Year")] %>% group_by(Location,Clone,Year) %>% reframe(cnt=dplyr::n()) %>% filter(cnt>2) %>% data.frame()
-  pdf(paste(locDir, loc, "FittedVsResids.pdf",sep=""),width = 10, height = 7)
+  pdf(paste(locDir, loc, "FittedVsResids.pdf",sep=""),width = 10, height = 6)
   plot(fitted(modLoc), resid(modLoc))
   dev.off()
   
-  pdf(paste(locDir, loc, "PlasticityIndividuals.pdf", sep = ''), height = 7, width = 10)
+  pdf(paste(locDir, loc, "PlasticityIndividuals.pdf", sep = ''), height = 6, width = 10)
   ggplot(cloneYear, aes(x = Year, y = rawVal, group = Clone, color = genoEst)) + 
     geom_line(color = 'black', alpha = 0.5) +
     geom_line(data = subset(cloneYear, Clone %in% plasticityLoc$Clone), linewidth = 1.5) +
@@ -546,7 +546,7 @@ for (loc in c("Saevar","Ekebo")) {
   
   
   ###GENOEST x STDERREST PLOTTING
-  pdf(paste(locDir, loc, "GenoEstxStderrEst.pdf", sep = ""), height = 7, width = 10)
+  pdf(paste(locDir, loc, "GenoEstxStderrEst.pdf", sep = ""), height = 6, width = 10)
   ##Plotting genotype x plasticity 
   ggplot(plasticityLoc, aes(x = genoEst, y = stderrEst, group = Clone, color = Prov)) + 
     geom_point(size = 2) +
@@ -586,7 +586,7 @@ for (loc in c("Saevar","Ekebo")) {
   
   
   ####Subsets
-  pdf(paste(locDir, loc, "Subset_GenoEstxStderrEst.pdf", sep = ""), height = 7, width = 10)
+  pdf(paste(locDir, loc, "Subset_GenoEstxStderrEst.pdf", sep = ""), height = 6, width = 10)
   # Genotype x Stderrest    
   ggplot(plasticityLocSub, aes(x = genoEst, y = stderrEst, group = Clone, color = Prov)) + 
     geom_point(size = 2) +
@@ -608,7 +608,7 @@ for (loc in c("Saevar","Ekebo")) {
   #X and Y flipped
   CYF <- ggplot(plasticityLocSub, aes(x = stderrEst, y = genoEst, group = Clone, color = Prov)) + 
     geom_point(size = 2) +
-    ggtitle(paste(loc, "Subsetted Clones"), subtitle = paste("Genotypic Estimates by Standard Error of the Mean; Adjusted R2:",round(summary(lm(plasticityLoc$stderrEst~plasticityLoc$genoEst))$r.squared,3))) +
+    ggtitle(paste(loc, "Subsetted Clones"), subtitle = paste("Genotypic Estimates by Standard Error of the Mean; \nAdjusted R2:",round(summary(lm(plasticityLoc$stderrEst~plasticityLoc$genoEst))$r.squared,3))) +
     labs(x = "Plasticity Score \n (Standard Error Estimate)", y = 'Genotypic Estimates') +
     geom_smooth(aes(group = 1), method = "lm", se = FALSE, color = "black") +
     geom_text(data = plasticityLocSub,
@@ -626,13 +626,13 @@ for (loc in c("Saevar","Ekebo")) {
   
   
   ##RESIDUALS
-  pdf(paste(locDir, loc, "All_ResidualsxGenoEst.pdf", sep = ""), height = 10, width = 15)
+  pdf(paste(locDir, loc, "All_ResidualsxGenoEst.pdf", sep = ""), height = 6, width = 10)
   #Genotype vs Residual for picking clone purposes
   ggplot(plasticityLoc, aes(x = genoEst, y = residVal, color = Prov)) + 
     geom_point(aes(group = Clone, shape = QLabels, stroke = 1.5), size = 2.5, fill = "red") +
     scale_shape_manual(values = c("BP,BG" = 25, "BP,GG" = 21, "GP, BG" = 23, "GP,GG" = 24, "Center" = 20)) +
     scale_color_brewer(palette = "Paired") +
-    ggtitle(paste(loc, "Clones"), subtitle = paste("Genotypic Estimates by Residuals; Adjusted R2:",round(summary(lm(plasticityLoc$residVal~plasticityLoc$genoEst))$r.squared,3))) +
+    ggtitle(paste(loc, "Clones"), subtitle = paste("Genotypic Estimates by Residuals; \nAdjusted R2:",round(summary(lm(plasticityLoc$residVal~plasticityLoc$genoEst))$r.squared,3))) +
     labs(x = "Genotypic Estimates", y = 'Plasticity Score \n Residuals (StderrEst~Genotype)') +
     geom_smooth(aes(group = 1), method = "lm", se = FALSE, color = "black") +
     geom_text(data = plasticityLoc,
@@ -652,7 +652,7 @@ for (loc in c("Saevar","Ekebo")) {
     geom_point(aes(group = Clone, shape = QLabels, stroke = 1.5), size = 2.5, fill = "red") +
     scale_shape_manual(values = c("BP,BG" = 25, "BP,GG" = 21, "GP, BG" = 23, "GP,GG" = 24, "Center" = 20)) +
     scale_color_brewer(palette = "Paired") +
-    ggtitle(paste(loc, "Clones"), subtitle = paste("Genotypic Estimates by Residuals; Adjusted R2:",round(summary(lm(plasticityLoc$residVal~plasticityLoc$genoEst))$r.squared,3))) +
+    ggtitle(paste(loc, "Clones"), subtitle = paste("Genotypic Estimates by Residuals; \nAdjusted R2:",round(summary(lm(plasticityLoc$residVal~plasticityLoc$genoEst))$r.squared,3))) +
     labs(x = "Plasticity Score \n Residuals (StderrEst~Genotype)", y = 'Genotypic Estimates') +
     geom_smooth(aes(group = 1), method = "lm", se = FALSE, color = "black") +
     geom_text(data = plasticityLoc,
@@ -672,7 +672,7 @@ for (loc in c("Saevar","Ekebo")) {
     geom_point(aes(group = Clone, shape = QLabels, stroke = 1.5), size = 2.5, fill = "red") +
     scale_shape_manual(values = c("BP,BG" = 25, "BP,GG" = 21, "GP, BG" = 23, "GP,GG" = 24, "Center" = 20)) +
     scale_color_brewer(palette = "Paired") +
-    ggtitle(paste(loc, "Subsetted Clones"), subtitle = paste("Genotypic Estimates by Residuals; Adjusted R2:",round(summary(lm(plasticityLoc$residVal~plasticityLoc$genoEst))$r.squared,3))) +
+    ggtitle(paste(loc, "Subsetted Clones"), subtitle = paste("Genotypic Estimates by Residuals; \nAdjusted R2:",round(summary(lm(plasticityLoc$residVal~plasticityLoc$genoEst))$r.squared,3))) +
     labs(y = "Plasticity Score \n Residuals (StderrEst~Genotype)", x = 'Genotypic Estimates') +
     geom_smooth(aes(group = 1), method = "lm", se = FALSE, color = "black") +
     geom_text(data = plasticityLocSub,
@@ -692,7 +692,7 @@ for (loc in c("Saevar","Ekebo")) {
     geom_point(aes(group = Clone, shape = QLabels, stroke = 1.5), size = 2.5, fill = "red") +
     scale_shape_manual(values = c("BP,BG" = 25, "BP,GG" = 21, "GP, BG" = 23, "GP,GG" = 24, "Center" = 20)) +
     scale_color_brewer(palette = "Paired") +
-    ggtitle(paste(loc, "Subsetted Clones"), subtitle = paste("Genotypic Estimates by Residuals (StderrEst~Genotype); Adjusted R2:",round(summary(lm(plasticityLoc$residVal~plasticityLoc$genoEst))$r.squared,3))) +
+    ggtitle(paste(loc, "Subsetted Clones"), subtitle = paste("Genotypic Estimates by Residuals (StderrEst~Genotype); \nAdjusted R2:",round(summary(lm(plasticityLoc$residVal~plasticityLoc$genoEst))$r.squared,3))) +
     labs(x = "Plasticity Score \n Residuals (StderrEst~Genotype)", y = 'Genotypic Estimates') +
     geom_smooth(aes(group = 1), method = "lm", se = FALSE, color = "black") +
     geom_text(data = plasticityLocSub,
