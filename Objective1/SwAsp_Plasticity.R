@@ -191,6 +191,8 @@ EkeboData$Clone <- relevel(EkeboData$Clone, ref = "67")
 EkeboSubset <- subset(EkeboData, EkeboData$Clone %in% EkeboGEClones$Clones) #422 entries
 SaevarSubSet <- subset(SaevarData, SaevarData$GE_Sample_Name %in% SaevarNameReassignment$old.sample) # 1962 entries
 
+AllSubSet <- rbind(SaevarSubSet[, c("Location","Block","Row","Plant","Clone","Year", "Population", "Province","Height", "ar1")], EkeboSubset[, c("Location","Block","Row","Plant","Clone","Year", "Population", "Province","Height", "ar1")])
+
 pdf(paste(outDir, type, "Ekebo_NormalityCheck.pdf", sep = ""),width = 7,height=5)
 hist(EkeboData$Height, col = 'red', main = "Ekebo Data")
 dev.off()
@@ -254,6 +256,19 @@ plasticity$col[1:10] <- "lightblue"
 plasticity$col[(nrow(plasticity)-10):nrow(plasticity)] <- "pink"
 locCloneYear <- locCloneYear %>% left_join(plasticity, by = "Clone")
 
+locCloneYearSub <- locCloneYear %>% filter(Clone %in% AllSubSet$Clone)
+locCloneYearSub$yearLabels <- as.factor(locCloneYearSub$yearLabels)
+locCloneYear$yearLabels <- as.factor(locCloneYear$yearLabels)
+
+genotypes99 <- read.table("SwAsp_AfterBatchRemoval_Het.MAF.HWE_CleanSites_5kb.fam", quote="\"", comment.char="") %>% dplyr::select(V2)
+phenotypes99 <- plasticity[c("Clone", "stderrEst", "genoEst")]
+phenotypes99 <- phenotypes99 %>% filter(Clone %in% genotypes99$V2)
+
+# Reorder rows to match genotypes99$V2
+phenotypes99 <- phenotypes99[order(match(phenotypes99$Clone, genotypes99$V2)), ]
+
+write.table(phenotypes99[c("Clone", "stderrEst")], paste(outDir, "Plas-BLUPs.txt", sep = ''), sep = '\t', row.names = F, col.names = T)
+write.table(phenotypes99[c("Clone", "genoEst")], paste(outDir, "GenoEst-BLUPs.txt", sep = ''), sep = '\t', row.names = F, col.names = T)
 
 
 #Plotting for between the two locations
@@ -276,6 +291,32 @@ plot(locCloneYear$Year[which(locCloneYear$Loc == "Ekebo")], locCloneYear[,"rawVa
 plot(locCloneYear$Year[which(locCloneYear$Loc == "Ekebo")], locCloneYear[,"transVal"][which(locCloneYear$Loc == "Ekebo")], 
      col = locCloneYear$LocColor[which(locCloneYear$Loc == "Ekebo")], pch=19, cex=1.5, main = "Clone:Location:Year Variation for Height of AllData in Ekebo (Trans Values)",
      xlab =  "Year (Sävar)", ylab = "Clone/Location/Year BLUP")
+dev.off()
+
+visDir = "~/UPSC_ThesisWork/Writing/Thesis_Visuals/"
+png(paste(visDir, "Densityplot.png",sep = ""), width = 8, height = 6, units = "in", res = 150)
+ggplot(locCloneYearSub, aes(x = rawVal, fill = yearLabels))+
+  geom_density(alpha=0.8, show.legend = F)+
+  facet_wrap(Loc~yearLabels, nrow = 3)+
+  geom_vline(xintercept = 0)+
+  ggtitle(paste("GxE Density Grouped by Year and Location")) +
+  labs(x = "GxE BLUP") + 
+  theme(axis.line = element_line(colour = "grey50"), axis.text.x = element_text(angle = 90, vjust = 0.5))   # Rotates x-axis labels
+dev.off()
+
+locCloneYearSubM <- locCloneYearSub %>%
+  group_by(Loc, Year) %>%  
+  summarise(mean_rawVal = mean(rawVal, na.rm = TRUE))%>%
+  ungroup()
+locCloneYearSubM$yearLabels <- paste(locCloneYearSubM$Loc,locCloneYearSubM$Year,sep="-")
+
+png(paste(visDir, "Lineplot.png",sep=""), width = 10, height = 6, units = "in", res = 200)
+ggplot(locCloneYearSub, aes(x = Year, y = rawVal, group = Loc))+
+  geom_smooth(fill = 'pink', color = 'red')+
+  ggtitle(paste("Clone's Response Throughout Growing Years"), subtitle = "Year by GxE BLUP; Formula y ~ x") +
+  labs(x = "Year", y = "GxE BLUP") + 
+  scale_x_continuous(breaks = locCloneYear$Year, labels = locCloneYear$yearLabels) +
+  theme(axis.line = element_line(colour = "grey50"), axis.text.x = element_text(angle = 90, vjust = 0.5))   # Rotates x-axis labels
 dev.off()
 
 pdf(paste(outDir, "All_PlasticityIndividuals.pdf",sep=""),width = 10, height = 6)
@@ -344,8 +385,11 @@ dev.off()
 
 ###Data Extraction for location specific
 for (loc in c("Saevar","Ekebo")) {
-  if (loc == "Saevar")  {df <- SaevarData[which(SaevarData$"Location" == loc),c("Location","Block","Row","Plant","Clone","Year", "Latitude", "Population", "Province","Height", "ar1")]
-  }else {df <- EkeboData[which(EkeboData$"Location" == loc),c("Location","Block","Row","Plant","Clone","Year", "Latitude", "Population", "Province","Height", "ar1")]}
+  if (loc == "Saevar")  {
+    df <- SaevarData[which(SaevarData$"Location" == loc),c("Location","Block","Row","Plant","Clone","Year", "Latitude", "Population", "Province","Height", "ar1")]
+  }else {
+    df <- EkeboData[which(EkeboData$"Location" == loc),c("Location","Block","Row","Plant","Clone","Year", "Latitude", "Population", "Province","Height", "ar1")]
+    }
   locDir <- paste(outDir,"Location/",sep="")
   
   SubSet <- SaevarSubSet[which(SaevarSubSet$"Location" ==  "Saevar"),c("Location","Block","Row","Plant","Clone","Year", "Latitude", "Population", "Province","Height", "ar1")]
@@ -423,6 +467,66 @@ for (loc in c("Saevar","Ekebo")) {
   
 }
 
+phenotypesLoc99 <- plasticityLoc[c("Clone", "stderrEst", "genoEst")]
+
+phenotypesLoc99 <- phenotypesLoc99 %>% 
+  filter(Clone %in% genotypes99$V2)
+phenotypesLoc99 <- phenotypesLoc99[order(match(phenotypesLoc99$Clone, genotypes99$V2)), ]
+
+write.table(phenotypesLoc99[c("Clone", "stderrEst")], paste(locDir, loc, "Plas-BLUPs.txt", sep = ''), sep = '\t', row.names = F, col.names = T)
+write.table(phenotypesLoc99[c("Clone", "genoEst")], paste(locDir, loc, "GenoEst-BLUPs.txt", sep = ''), sep = '\t', row.names = F, col.names = T)
+
+SSP <- ggplot(cloneYearSub, aes(x = rawVal,fill = Year))+
+  geom_density(alpha=0.8, show.legend = F)+
+  facet_wrap(~Year, nrow = 2)+
+  geom_vline(xintercept = 0)+
+  ggtitle(paste(loc, "GxE Density Grouped by Year"))+
+  labs(x = "GxE BLUE")+
+  theme(axis.line = element_line(colour = "grey50"), axis.text.x = element_text(angle = 90, vjust = 0.5))   # Rotates x-axis labels
+EEP <- ggplot(cloneYearSub, aes(x = rawVal,fill = Year))+
+  geom_density(alpha=0.8, show.legend = F)+
+  facet_wrap(~Year, nrow = 2)+
+  geom_vline(xintercept = 0)+
+  ggtitle(paste(loc, "GxE Density Grouped by Year"))+
+  labs(x = "GxE BLUE")+
+  theme(axis.line = element_line(colour = "grey50"), axis.text.x = element_text(angle = 90, vjust = 0.5))   # Rotates x-axis labels
+
+  png(paste(visDir,"Mixed_Densityplot.png",sep=""), width = 8, height = 6, units = "in", res = 200)
+  ggarrange(EEP, SSP, nrow = 2, ncol = 1, labels = c("A", "B"))
+  dev.off()
+  
+  SP <- ggplot(cloneYearSub, aes(x = Year, y = rawVal, group = 1))+
+    geom_smooth(fill = 'pink', color = 'red', show.legend = F)+
+    ggtitle(paste(loc, "Clone's Response Throughout Growing Years"), subtitle = "Year by GxE BLUE; Formula y ~ x") +
+    labs(x = "Year (2007-2013)", y = "GxE BLUE") + 
+    theme(axis.line = element_line(colour = "grey50"), axis.text.x = element_text(angle = 90, vjust = 0.5))   # Rotates x-axis labels
+  EP <- ggplot(cloneYearSub, aes(x = Year, y = rawVal, group = 1))+
+    geom_smooth(fill = 'pink', color = 'red')+
+    ggtitle(paste(loc, "Clone's Response Throughout Growing Years"), subtitle = "Year by GxE BLUE; Formula y ~ x") +
+    labs(x = "Year (2008-2013)", y = "GxE BLUE") + 
+    theme(axis.line = element_line(colour = "grey50"), axis.text.x = element_text(angle = 90, vjust = 0.5))   # Rotates x-axis labels
+  
+  png(paste(visDir, "Mixed_Lineplot.png",sep=""), width = 10, height = 7, units = "in", res = 200)
+  ggarrange(EP, SP, ncol = 1, nrow = 2, labels = c("A", "B"))
+  dev.off()
+  
+  cloneYearSubM <- cloneYearSub %>%
+    group_by(Year) %>%  
+    summarise(mean_rawVal = mean(rawVal, na.rm = TRUE))%>%
+    ungroup()
+  
+  png(paste(visDir, loc, "Mean_Densityplot.png",sep=""), width = 8, height = 4, units = "in", res = 200)
+  ggplot(cloneYearSubM, aes(x = mean_rawVal))+
+    geom_density(alpha=0.8, fill = 'orange')+
+    geom_vline(aes(xintercept = mean_rawVal, colour = Year), linewidth = 0.7, show.legend = T) +
+    geom_text(aes(y = 0, label = Year),
+              vjust = 1, hjust = 0.5, angle = 90, size = 3, check_overlap = F)+
+    ggtitle(paste(loc, "Average GxE"), subtitle = "Vertical Line for Each Year of Mean Data")+
+    labs(x = "GxE BLUE", y = "Density")+
+    theme(axis.line = element_line(colour = "grey50"), axis.text.x = element_text(angle = 90, vjust = 0.5))   # Rotates x-axis labels
+  dev.off()
+  
+  
   #df[,c("Location","Clone","Year")] %>% group_by(Location,Clone,Year) %>% reframe(cnt=dplyr::n()) %>% filter(cnt>2) %>% data.frame()
   pdf(paste(locDir, loc, "FittedVsResids.pdf",sep=""),width = 10, height = 6)
   plot(fitted(modLoc), resid(modLoc))
@@ -430,25 +534,38 @@ for (loc in c("Saevar","Ekebo")) {
   
   pdf(paste(locDir, loc, "PlasticityIndividuals.pdf", sep = ''), height = 6, width = 10)
   ggplot(cloneYear, aes(x = Year, y = rawVal, group = Clone, color = genoEst)) + 
-    geom_line(color = 'black', alpha = 0.5) +
     geom_line(data = subset(cloneYear, Clone %in% plasticityLoc$Clone), linewidth = 1.5) +
     ggtitle(paste(loc, "All Plasticity")) +
-    labs(y = "GxE BLUP", x = '') + 
+    labs(y = "GxE BLUP") + 
     scale_x_discrete(cloneYear$Year, cloneYear$Year) +
     scale_color_gradientn(name = 'Clone BLUP', 
                           colors = c("navy", "white", "firebrick")) +  
     theme(axis.line = element_line(colour = "grey50"), axis.text.x = element_text(angle = 90, vjust = 0.5))   # Rotates x-axis labels
-  
+  dev.off()
   #Subset
-  ggplot(cloneYearSub, aes(x = Year, y = rawVal, group = Clone, color = genoEst)) + 
+  EP2 <- ggplot(cloneYearSub, aes(x = Year, y = rawVal, group = Clone, color = genoEst)) + 
+    geom_line(color = 'black', alpha = 0.5) +
+    geom_line(data = subset(cloneYearSub, Clone %in% plasticityLocSub$Clone), linewidth = 1.5, show.legend = F) +
+    ggtitle(paste(loc, "All Plasticity Subset")) +
+    ylab("GxE BLUE") + 
+    xlab('Years (2008-2013)')+
+    scale_color_gradientn(name = 'Clone BLUE', 
+                          colors = c("navy", "white", "firebrick")) +  
+    theme(axis.line = element_line(colour = "grey50"), axis.text.x = element_text(angle = 90, vjust = 0.5))   # Rotates x-axis labels
+  
+  SP2 <- ggplot(cloneYearSub, aes(x = Year, y = rawVal, group = Clone, color = genoEst)) + 
     geom_line(color = 'black', alpha = 0.5) +
     geom_line(data = subset(cloneYearSub, Clone %in% plasticityLocSub$Clone), linewidth = 1.5) +
     ggtitle(paste(loc, "All Plasticity Subset")) +
-    labs(y = "GxE BLUP", x = '') + 
-    scale_x_discrete(cloneYearSub$Year, cloneYearSub$Year) +
-    scale_color_gradientn(name = 'Clone BLUP', 
+    ylab("GxE BLUE") + 
+    xlab('Years (2007-2013)')+
+    scale_color_gradientn(name = 'Clone BLUE', 
                           colors = c("navy", "white", "firebrick")) +  
     theme(axis.line = element_line(colour = "grey50"), axis.text.x = element_text(angle = 90, vjust = 0.5))   # Rotates x-axis labels
+  
+  png(paste(visDir, "Mixed_Lineplot2.png",sep=""), width = 11, height = 8, units = "in", res = 200)
+  ggarrange(EP, SP, EP2, SP2, ncol = 2, nrow = 2, labels = c("A", "B", "C", "D"))
+  dev.off()
   
   ggplot(cloneYear, aes(x = Year, y = rawVal, group = Clone, color = genoEst)) + 
     geom_line(color = 'black', alpha = 0.5) +
@@ -586,10 +703,13 @@ for (loc in c("Saevar","Ekebo")) {
   
   
   ####Subsets
-  pdf(paste(locDir, loc, "Subset_GenoEstxStderrEst.pdf", sep = ""), height = 6, width = 10)
+  png(paste(visDir, loc, "Subset_GenoEstxStderrEst.png", sep = ""), width = 8, height = 10, units = "in", res = 200)
   # Genotype x Stderrest    
   ggplot(plasticityLocSub, aes(x = genoEst, y = stderrEst, group = Clone, color = Prov)) + 
     geom_point(size = 2) +
+    geom_point(aes(group = Clone, shape = QLabels, stroke = 1.5), size = 2.5, fill = "red") +
+    scale_shape_manual(values = c("BP,BG" = 25, "BP,GG" = 21, "GP, BG" = 23, "GP,GG" = 24, "Center" = 20)) +
+    scale_color_brewer(palette = "Paired") +
     ggtitle(paste(loc, "Subset \nAdj. R2:",round(summary(lm(plasticityLocSub$stderrEst~plasticityLocSub$genoEst))$r.squared,3))) +
     labs(x = "Genotypic Estimates", y = 'Plasticity Score \n StderrEst of Clones') +
     geom_smooth(aes(group = 1), method = "lm", se = FALSE, color = "black") +
@@ -608,10 +728,13 @@ for (loc in c("Saevar","Ekebo")) {
   #X and Y flipped
   CYF <- ggplot(plasticityLocSub, aes(x = stderrEst, y = genoEst, group = Clone, color = Prov)) + 
     geom_point(size = 2) +
+    geom_point(aes(group = Clone, shape = QLabels, stroke = 1.5), size = 2.5, fill = "red") +
+    scale_shape_manual(values = c("BP,BG" = 25, "BP,GG" = 21, "GP, BG" = 23, "GP,GG" = 24, "Center" = 20)) +
+    scale_color_brewer(palette = "Paired") +
     ggtitle(paste(loc, "Subsetted Clones"), subtitle = paste("Genotypic Estimates by Standard Error of the Mean; \nAdjusted R2:",round(summary(lm(plasticityLoc$stderrEst~plasticityLoc$genoEst))$r.squared,3))) +
     labs(x = "Plasticity Score \n (Standard Error Estimate)", y = 'Genotypic Estimates') +
     geom_smooth(aes(group = 1), method = "lm", se = FALSE, color = "black") +
-    geom_text(data = plasticityLocSub,
+    geom_text(data = subset(plasticityLocSub, QLabels != "Center"),
               aes(label = Clone),  # Label with clone names
               color = "black",  # Text color
               vjust = -0.5,  # Adjust vertical position of labels
@@ -626,7 +749,7 @@ for (loc in c("Saevar","Ekebo")) {
   
   
   ##RESIDUALS
-  pdf(paste(locDir, loc, "All_ResidualsxGenoEst.pdf", sep = ""), height = 6, width = 10)
+  png(paste(visDir, loc, "All_ResidualsxGenoEst.png", sep = ""),  width = 8, height = 10, units = "in", res = 200)
   #Genotype vs Residual for picking clone purposes
   ggplot(plasticityLoc, aes(x = genoEst, y = residVal, color = Prov)) + 
     geom_point(aes(group = Clone, shape = QLabels, stroke = 1.5), size = 2.5, fill = "red") +
@@ -695,7 +818,7 @@ for (loc in c("Saevar","Ekebo")) {
     ggtitle(paste(loc, "Subsetted Clones"), subtitle = paste("Genotypic Estimates by Residuals (StderrEst~Genotype); \nAdjusted R2:",round(summary(lm(plasticityLoc$residVal~plasticityLoc$genoEst))$r.squared,3))) +
     labs(x = "Plasticity Score \n Residuals (StderrEst~Genotype)", y = 'Genotypic Estimates') +
     geom_smooth(aes(group = 1), method = "lm", se = FALSE, color = "black") +
-    geom_text(data = plasticityLocSub,
+    geom_text(data = subset(plasticityLocSub, QLabels != "Center"),
               aes(label = Clone),  # Label with clone names
               color = "black",  # Text color
               vjust = -0.8,  # Adjust vertical position of labels
@@ -707,7 +830,7 @@ for (loc in c("Saevar","Ekebo")) {
     geom_vline(xintercept = quantile(plasticityLocSub$residVal, probs = 0.75, na.rm = T), linetype = "dashed", color = "purple") +
     theme(axis.line = element_line(colour = "grey10"))    # Rotates x-axis labels
   
-  ggarrange(CYF, CYFS, labels = c("A", "B"), ncol = 2, nrow = 1)
+  ggarrange(CYF, CYFS, labels = c("A", "B"), ncol = 1, nrow = 2)
   dev.off()
   
 ##Writing to a file all the clones that are in one of the quadrants
@@ -724,6 +847,26 @@ if (loc == "Ekebo"){
 clones$Prov <- plasticityLocSub$Prov[match(clones$Clones, plasticityLocSub$Clone)]
 clones$QLabel <- plasticityLocSub$QLabels[match(clones$Clones, plasticityLocSub$Clone)]
 write.table(clones, file = paste(locDir, loc, "_ChosenClones.txt", sep = ''), sep = "\t", row.names = F)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #No SD as we dont have the data for it 
